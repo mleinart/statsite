@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <stdbool.h>
+#include <regex.h>
 #include "radix.h"
 
 typedef enum {
@@ -54,6 +55,11 @@ typedef struct sink_config_stream {
     const char* stream_cmd;
 } sink_config_stream;
 
+typedef struct regex_replacement {
+  regex_t* pattern;
+  const char* replacement;
+} regex_replacement;
+
 /**
  * An HTTP sink config.
  */
@@ -69,6 +75,7 @@ typedef struct sink_config_http {
     const char* oauth_secret; /* OAuth2 Secret */
     const char* oauth_token_url; /* URL to get a new token from */
     bool use_prefix; /* Whether to prefix metric keys */
+    regex_replacement* regex;
 } sink_config_http;
 
 // Represents the configuration of a histogram

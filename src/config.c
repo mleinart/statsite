@@ -319,6 +319,20 @@ static int sink_callback(void* user, const char* section, const char* name, cons
             config->oauth_token_url = strdup(value);
         } else if (NAME_MATCH("use_prefix")) {
             value_to_bool(value, &config->use_prefix);
+        } else if (NAME_MATCH("replacement")) {
+            char* tok = NULL;
+            char* pattern_tok = strdup(value);
+            char* pattern = strtok_r(pattern_tok, " ", &tok);
+            config->regex->pattern = malloc(sizeof(regex_t));
+            if (regcomp(config->regex->pattern, pattern, REG_EXTENDED) != 0) {
+              syslog(LOG_NOTICE, "Invalid regular expression pattern: %s", pattern);
+              free(pattern_tok);
+              free(config->regex->pattern);
+              return 0;
+            }
+            /* Okay if this  is NULL */
+            config->regex->replacement = strtok_r(NULL, " ", &tok);
+            free(pattern_tok);
         } else {
             /* Attempt to locate keys
              * of the form param_PNAME */
