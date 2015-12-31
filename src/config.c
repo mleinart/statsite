@@ -323,16 +323,24 @@ static int sink_callback(void* user, const char* section, const char* name, cons
             char* tok = NULL;
             char* pattern_tok = strdup(value);
             char* pattern = strtok_r(pattern_tok, " ", &tok);
-            config->regex->pattern = malloc(sizeof(regex_t));
-            if (regcomp(config->regex->pattern, pattern, REG_EXTENDED) != 0) {
+            regex_substitution *substitution = malloc(sizeof(regex_substitution));
+            substitution->pattern = malloc(sizeof(regex_t));
+            if (regcomp(substitution->pattern, pattern, REG_EXTENDED) != 0) {
               syslog(LOG_NOTICE, "Invalid regular expression pattern: %s", pattern);
               free(pattern_tok);
-              free(config->regex->pattern);
+              free(substitution->pattern);
+              free(substitution);
               return 0;
             }
-            /* Okay if this  is NULL */
-            config->regex->replacement = strtok_r(NULL, " ", &tok);
+            /* It's okay if this is NULL */
+            substitution->replacement = strtok_r(NULL, " ", &tok);
             free(pattern_tok);
+
+            regex_substitution* last = config->substitutions;
+            if (last) {
+              substitution->next = last;
+            }
+            config->substitutions = substitution;
         } else {
             /* Attempt to locate keys
              * of the form param_PNAME */

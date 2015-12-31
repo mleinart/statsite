@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <regex.h>
 
 #include "lifoq.h"
 #include "metrics.h"
@@ -37,6 +38,37 @@ struct cb_info {
     const sink_config_http *httpconfig;
 };
 
+void perform_substitutions(char* buffer, regex_substitution* sub) {
+    if (!sub) {
+        return;
+    }
+    /* List is in reverse order so go depth first */
+    perform_substitutions(buffer, sub);
+
+    regmatch_t nmatch[2];
+
+    if (!regexec(sub->pattern, buffer, 2, nmatch, 0)) {
+        int idx = sub->pattern->re_nsub > 0 ? 1 : 0;
+        int start = nmatch[idx].rm_so;
+        int end = nmatch[idx].rm_eo;
+
+        if (start >= 0 && end >= 0) {
+            int new_length = strlen(buffer);
+            new_length -= (end - start);
+            new_length += strlen(sub->replacement) + 1;
+            if (new_length > strlen(buffer)) {
+                realloc(buffer, (new_length - strlen(buffer)) * sizeof(char));
+            }
+            char tmp[new_length];
+            char* to = tmp;
+            stpncpy(to, buffer, start);
+            stpcpy(to, sub->replacement);
+            stpcpy(to, buffer + end);
+            strcpy(buffer, tmp);
+       }
+    }
+}
+
 /*
  * TODO: There is a lot redundant code here with sink_stream to normalize
  * an output representation of a metrics.
@@ -62,6 +94,8 @@ static int add_metrics(void* data,
         strcat(suffixed, suf);                                          \
         json_object_set_new(obj, suffixed, val);                        \
     } while(0)
+
+    perform_substitutions(name, httpconfig->substitutions);
 
     char* prefix = NULL;
     uint16_t pre_len = 0;
